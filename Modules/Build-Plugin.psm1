@@ -141,30 +141,41 @@ function Build-Plugin
             [switch]$Err = $false
         )
 
-        $Color = "White"
+        $Color = "Blue"
+        $Prefix = "INFO"
+        if ($Debug)
+        {
+            $Color = "Gray"
+            $Prefix = "DEBUG"
+        }
         if ($Warn)
         {
             $Color = "Yellow"
+            $Prefix = "WARN"
         }
         elseif ($Err)
         {
             $Color = "Red"
+            $Prefix = "ERROR"
         }
-        Write-Host $Message -ForegroundColor $Color
+        Write-Host "[$Prefix]" $Message -ForegroundColor $Color
     }
 
     function Configure-ClangEnvironment
     {
         param ([string]$Version)
 
-        if ( $TargetPlatforms.Contains("Linux"))
+        if ($TargetPlatforms.Contains([Platforms]::Linux))
         {
-            $env:LINUX_MULTIARCH_ROOT = "C:\UnrealToolchains\$( $ClangFolders[$Version] )\"
+            $env:LINUX_MULTIARCH_ROOT = "C:\UnrealToolchains\$($ClangFolders[$Version])\"
 
             if (-not (Test-Path -Path $env:LINUX_MULTIARCH_ROOT))
             {
                 Prompt-ClangInstallation $Version
             }
+            Log-Message "Set Clang to $env:LINUX_MULTIARCH_ROOT"
+        } else {
+            Log-Message "Not building for linux. Skipping Clang config."
         }
     }
 
@@ -222,10 +233,6 @@ function Build-Plugin
         }
     }
 
-    $PluginDirectory = Initialize-PluginDirectory
-    $UPluginPath = Get-UPluginPath -Path $PluginDirectory
-    $UPlugin = Get-Content -Path $UPluginPath | ConvertFrom-Json
-
     $ConfigFilePath = Join-Path -Path (New-Object -ComObject Shell.Application).NameSpace('shell:Profile').Self.Path -ChildPath ".build-plugin.json"
     if (-not (Test-Path -Path $ConfigFilePath))
     {
@@ -245,6 +252,11 @@ function Build-Plugin
     switch ($OperationMode)
     {
         Build {
+
+            $PluginDirectory = Initialize-PluginDirectory
+            $UPluginPath = Get-UPluginPath -Path $PluginDirectory
+            $UPlugin = Get-Content -Path $UPluginPath | ConvertFrom-Json
+
             $Versions = $SpecifiedEngineVersions
             if ('All' -eq $SpecifiedEngineVersions)
             {
@@ -260,7 +272,7 @@ function Build-Plugin
 
             foreach ($Version in $Versions)
             {
-                Write-Host "Building Plugin for UE_$Version"
+                Log-Message "Building Plugin for UE_$Version"
 
                 if (-not $Configuration.HasVersion($Version))
                 {
@@ -269,7 +281,7 @@ function Build-Plugin
                 }
 
                 Set-UnrealEngineRoot($Configuration.GetVersionPath($Version))
-                Configure-ClangEnvironment($Version)
+                Configure-ClangEnvironment -Version $Version
 
                 $UPluginFriendlyName = ($UPlugin.FriendlyName -Split " ") -Join ""
                 $FolderNameParts = @($UPluginFriendlyName, $UPlugin.VersionName)
@@ -294,12 +306,18 @@ function Build-Plugin
                     $BuildArgs += "-NoHostPlatform"
                 }
 
-                Start-Process ue4 `
+                $BuildPluginProcess = Start-Process ue4 `
                     -Wait `
                     -NoNewWindow `
+                    -PassThru `
                     -WorkingDirectory $PluginDirectory `
                     -ArgumentList $BuildArgs
 
+                if (0 -ne $BuildPluginProcess.ExitCode)
+                {
+                    Log-Message -Err "Plugin build failed, exiting..."
+                    Break Script
+                }
                 $ExcludedZipFolders = @("Intermediate", "Binaries")
                 Get-ChildItem -Path $FullDestination | Where-Object { -not ($_.PSIsContainer -and ($ExcludedZipFolders -contains $_.Name)) } | Compress-Archive -DestinationPath ($FullDestination + ".zip") -Force
             }
@@ -319,7 +337,7 @@ function Build-Plugin
             Log-Message "Engine Versions:"
             foreach ($Install in $Configuration.EngineInstalls)
             {
-                Write-Host "$( $Install.Version ) $( $Install.Path )"
+                Log-Message "$( $Install.Version ) $( $Install.Path )"
             }
         }
         default {
@@ -387,7 +405,7 @@ class Config
     {
         if ( $this.hasVersion($Version))
         {
-            Write-Host $Version already saved for $Path
+            Log-Message -Warn $Version already saved for $Path
             return
         }
         $newEngineInstall = [EngineInstall]::new($Version, $Path)
