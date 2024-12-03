@@ -324,7 +324,11 @@ function Build-Plugin
                     Break Script
                 }
                 $DestinationPath = $FullDestination + ".zip"
-                $ExcludedZipFolders = @("Intermediate", "Binaries")
+                $ExcludedZipFolders = @()
+                if (!($IncludeHostBinaries)) {
+                    $ExcludedZipFolders += "Intermediate"
+                    $ExcludedZipFolders += "Binaries"
+                }
                 Get-ChildItem -Path $FullDestination | Where-Object { -not ($_.PSIsContainer -and ($ExcludedZipFolders -contains $_.Name)) } | Compress-Archive -DestinationPath ($FullDestination + ".zip") -Force
                 Log-Message "Compressed Zip created! $DestinationPath"
             }
