@@ -89,7 +89,8 @@ function Build-Plugin
     {
         param ([string]$Path)
         $UPluginPath = Get-ChildItem -Path $Path -Filter *.uplugin -File -ErrorAction SilentlyContinue
-        if ($null -eq $UPluginPath) {
+        if ($null -eq $UPluginPath)
+        {
             return ""
         }
         return $UPluginPath
@@ -100,7 +101,8 @@ function Build-Plugin
         while ($Path -ne "")
         {
             $UPluginPath = Get-UPluginPath -Path $Path;
-            if ($UPluginPath -ne "") {
+            if ($UPluginPath -ne "")
+            {
                 return $Path
             }
             $Path = Split-Path -Path $Path -Parent
@@ -165,16 +167,18 @@ function Build-Plugin
     {
         param ([string]$Version)
 
-        if ($TargetPlatforms.Contains([Platforms]::Linux))
+        if ( $TargetPlatforms.Contains([Platforms]::Linux))
         {
-            $env:LINUX_MULTIARCH_ROOT = "C:\UnrealToolchains\$($ClangFolders[$Version])\"
+            $env:LINUX_MULTIARCH_ROOT = "C:\UnrealToolchains\$( $ClangFolders[$Version] )\"
 
             if (-not (Test-Path -Path $env:LINUX_MULTIARCH_ROOT))
             {
                 Prompt-ClangInstallation $Version
             }
             Log-Message "Set Clang to $env:LINUX_MULTIARCH_ROOT"
-        } else {
+        }
+        else
+        {
             Log-Message "Not building for linux. Skipping Clang config."
         }
     }
@@ -313,13 +317,16 @@ function Build-Plugin
                     -WorkingDirectory $PluginDirectory `
                     -ArgumentList $BuildArgs
 
+                Log-Message "Build completed successfully for $Version"
                 if (0 -ne $BuildPluginProcess.ExitCode)
                 {
                     Log-Message -Err "Plugin build failed, exiting..."
                     Break Script
                 }
+                $DestinationPath = $FullDestination + ".zip"
                 $ExcludedZipFolders = @("Intermediate", "Binaries")
                 Get-ChildItem -Path $FullDestination | Where-Object { -not ($_.PSIsContainer -and ($ExcludedZipFolders -contains $_.Name)) } | Compress-Archive -DestinationPath ($FullDestination + ".zip") -Force
+                Log-Message "Compressed Zip created! $DestinationPath"
             }
         }
         Save {
@@ -416,14 +423,15 @@ class Config
     GetAllVersions([bool]$Reverse)
     {
         $Installs = $this.EngineInstalls;
-        if ($Reverse)
-        {
-            [array]::Reverse($Installs)
-        }
         $Result = @()
         foreach ($Install in $Installs)
         {
             $Result += $Install.Version
+        }
+        $Result = $Result | Sort-Object
+        if (!($Reverse))
+        {
+            [array]::Reverse($Result)
         }
         return $Result
     }
