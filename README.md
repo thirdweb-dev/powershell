@@ -24,4 +24,11 @@ Commands related to configuration of the module across all submodules
 
 ### Helpers
 Internal Commands used within other commands
+
+#### Commandlets
 * **Write-Message** - Logger that adds colorization and log level prefix to Write-Host
+
+## Installing
+```powershell
+wip
+```
