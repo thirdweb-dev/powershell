@@ -8,19 +8,35 @@ enum ClangOS
 
 class Clang
 {
-    [Version]$Version    # Example: "11.0.1"
     [string]$Release     # Example: "v19"
+    [Version]$Version    # Example: "11.0.1"
     [Version[]]$Engines  # Example: "5.0"
     [ClangOS]$OS         # Example: "centos7"
 
     # Constructor to initialize the properties
-    Clang([string]$version, [string]$release, [ClangOS]$os, [string[]]$engines)
+    Clang([string]$release, [string]$version, [ClangOS]$os, [string[]]$engines)
     {
-        $this.Version = [Version]::new($version)
+        try
+        {
+            $this.Version = [Version]::new($version)
+        }
+        catch
+        {
+            throw "Clang::Init::Invalid Clang Version '$version'"
+        }
+
         $this.Release = $release
         foreach ($engine in $engines)
         {
-            $this.Engines += [Version]::new($engine)
+            try
+            {
+                $this.Engines += [Version]::new($engine)
+            }
+            catch
+            {
+                throw "Clang::Init::Invalid Engine Version '$engine'"
+            }
+
         }
         $this.OS = $os
     }
@@ -66,7 +82,6 @@ class Clang
 
     Install()
     {
-
         Write-Message "Downloading $($this.GetFolderName() ).exe to $($this.GetDownloadPath() )"
         Invoke-WebRequest -Uri $this.GetDownloadUrl() -OutFile $this.GetDownloadPath()
 
@@ -77,26 +92,25 @@ class Clang
         }
     }
 
-
     [Clang[]]
     static GetSupportedVersions()
     {
         return @(
-            [Clang]::new("v23", "18.1.0", [ClangOS]::rockylinux8, @("5.5")),
-            [Clang]::new("v22", "16.0.6", [ClangOS]::centos7, @("5.4", "5.3")),
-            [Clang]::new("v21", "15.0.1", [ClangOS]::centos7, @("5.2")),
-            [Clang]::new("v20", "13.0.1", [ClangOS]::centos7, @("5.1")),
-            [Clang]::new("v19", "11.0.1", [ClangOS]::centos7, @("5.0"))
+            [Clang]::new("v23", "18.1.0", [ClangOS]::rockylinux8, @("5.5.0")),
+            [Clang]::new("v22", "16.0.6", [ClangOS]::centos7, @("5.4.0", "5.3.0")),
+            [Clang]::new("v21", "15.0.1", [ClangOS]::centos7, @("5.2.0")),
+            [Clang]::new("v20", "13.0.1", [ClangOS]::centos7, @("5.1.0")),
+            [Clang]::new("v19", "11.0.1", [ClangOS]::centos7, @("5.0.0"))
         )
     }
 
 
     [Clang]
-    static FromEngineVersion([string]$version)
+    static FromEngineVersion([string]$EngineVersion)
     {
         # Normalize the input EngineVersion to "major.minor" (ignore patch or prerelease data)
-        $normalizedVersion = ($version -split '[.-]')[0..1] -join '.'
-
+        $NormalizedVersionString = ($EngineVersion -split '[.-]')[0..1] -join '.'
+        $NormalizedVersion = [Version]::new("$NormalizedVersionString$( ".0" )")
         # Find Clang version(s) that support the given Unreal Engine version
         $matchedClang = [Clang]::GetSupportedVersions() | Where-Object {
             $_.Engines -contains $normalizedVersion
@@ -105,11 +119,11 @@ class Clang
         if ($matchedClang.Count -eq 0)
         {
             $AvailableVersions = ([Clang]::GetSupportedVersions() | ForEach-Object { $_.Engines }) -join ", "
-            Write-Message -Fatal "No engine versions found matching '$version'. Available engine versions are: $AvailableVersions. Ensure the major and minor version match an available engine version."
+            Write-Message -Fatal "No engine versions found matching '$NormalizedVersion'. Available engine versions are: $AvailableVersions. Ensure the major and minor version match an available engine version."
         }
         elseif ($matchedClang.Count -gt 1)
         {
-            Write-Message -Fatal "Multiple Clang versions found for engine version '$version'. Specify a more accurate pattern."
+            Write-Message -Fatal "Multiple Clang versions found for engine version '$NormalizedVersion'. Specify a more accurate pattern."
         }
         else
         {
@@ -132,7 +146,16 @@ function Install-Clang
         [Parameter(Mandatory = $true)]
         [string]$EngineVersion
     )
-    [Clang]::FromEngineVersion($EngineVersion).Install()
+    if (-not $Clang.IsInsatalled())
+    {
+        $Clang = [Clang]::FromEngineVersion($EngineVersion)
+        Write-Message "Installing Clang $($Clang.GetFolderName() )"
+        $Clang.Install()
+    }
+    else
+    {
+        Write-Message "Clang $($Clang.GetFolderName() ) already installed"
+    }
 }
 
 function Set-Clang
@@ -145,7 +168,7 @@ function Set-Clang
 
     $Clang = [Clang]::FromEngineVersion($EngineVersion)
 
-    if (-not ($Clang.IsInstalled()))
+    if (-not $Clang.IsInstalled())
     {
         $caption = "Missing Clang Toolchain"
         $message = "You do not have the Clang Cross-Compile Toolchain installed for UE v{0}. (Clang {1}). Install?" -f $EngineVersion,$Clang.GetFolderName()

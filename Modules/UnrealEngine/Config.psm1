@@ -6,29 +6,48 @@ class Config
 {
     [UnrealEngine[]] $Engines
     [string] $SourceDirectory
+    [bool] $Loaded
 
     Config()
     {
         $this.Engines = @()
+        $this.Loaded = $false
+    }
+
+    Config([bool]$Load)
+    {
+        if ($Load)
+        {
+            $Config = [Config]::Load()
+            $this.Engines = $Config.Engines
+            $this.SourceDirectory = $Config.SourceDirectory
+            $this.Loaded = $true
+        }
+        else
+        {
+            $this.Engines = @()
+            $this.Loaded = $false
+        }
     }
 
     [void]
-    AddEngine([UnrealEngine]$Engine)
+    AddUnrealEngine([UnrealEngine]$Engine)
     {
-        if ($this.hasVersion($Engine.Version))
+        if ( $this.HasUnrealEngineVersion($Engine.Version))
         {
-            Write-Message -Warn "$($Engine.Version) already saved for $($Engine.Path)"
+            Write-Message -Warn "$( $Engine.Version ) already saved for $( $Engine.Path )"
             return
         }
         $this.Engines += $Engine
     }
 
     [bool]
-    HasVersion([string]$Version)
+    HasUnrealEngineVersion([string]$Version)
     {
-        ForEach ($Engine in $this.Engines)
+        $AllVersions = $this.GetAllUnrealEngineVersions()
+        ForEach ($EngineVersion in $AllVersions)
         {
-            if ( $Engine.Version.ToString().StartsWith($Version))
+            if ( $Version.ToString().StartsWith($Version))
             {
                 return $true
             }
@@ -37,43 +56,107 @@ class Config
     }
 
     [string]
-    GetVersionPath([string]$Version)
+    GetUnrealEnginePath([string]$Version)
     {
-        if (-not $this.Engines -or $this.Engines.Count -eq 0) {
-            Write-Message -Warn "No available engine versions to search."
+        $AllEngines = $this.GetAllUnrealEngines()
+        if (0 -eq $AllEngines.Count)
+        {
+            Write-Message -Err "No available engine versions to search."
             return ""
         }
-        ForEach ($Engine in $this.Engines)
+        ForEach ($Engine in $AllEngines)
         {
             if ( $Engine.Version.ToString().StartsWith($Version))
             {
                 return $Engine.Path
             }
         }
+        Write-Message -Err "No engine version matched $Version"
         return ""
     }
 
+    # Unreal Engine
 
-    [string[]]
-    GetAllVersions([bool]$Reverse)
+    [UnrealEngine[]]
+    GetSourceUnrealEngines()
     {
-        $Result = @()
+        return [UnrealEngine]::GetSourceEngines($this.SourceDirectory)
+    }
+
+    [UnrealEngine[]]
+    GetCustomUnrealEngines()
+    {
+        $Existing = $( )
         foreach ($Engine in $this.Engines)
         {
-            $Result += $Engine.Version
+            if (TestPath -Path $Engine.Path)
+            {
+                $Existing += $Engine
+            }
         }
-        $Result = $Result | Sort-Object
-        if (!($Reverse))
+        return $Existing
+    }
+
+    [UnrealEngine[]]
+    GetAllUnrealEngines()
+    {
+        $SourceEngines = $this.GetSourceUnrealEngines()
+        $CustomEngines = $this.GetCustomUnrealEngines()
+        $AllEngines = @()
+        foreach ($Engine in $SourceEngines)
         {
-            [array]::Reverse($Result)
+            if ($Engine)
+            {
+                $AllEngines += $Engine
+            }
         }
+        foreach ($Engine in $CustomEngines)
+        {
+            if ($Engine)
+            {
+                $AllEngines += $Engine
+            }
+        }
+        return $AllEngines
+    }
+
+    [Version[]]
+    GetAllUnrealEngineVersions()
+    {
+        $AllEngines = $this.GetAllUnrealEngines()
+        $Result = $( foreach ($Engine in $AllEngines)
+        {
+            $Engine.Version
+        } ) | Sort-Object
         return $Result
     }
 
     [string[]]
-    GetAllVersions()
+    GetAllUnrealEngineStringVersions([bool]$StripPatchVersion, [bool]$Reverse)
     {
-        return $this.GetAllVersions($false)
+        $AllVersions = $this.GetAllUnrealEngineVersions()
+        $StringVersions = $( foreach ($Version in $AllVersions)
+        {
+            if ($StripPatchVersion)
+            {
+                "{0}.{1}" -f $Version.Major, $Version.Minor
+            }
+            else
+            {
+                $Version.ToString()
+            }
+        } ) | Sort-Object
+        if (-not $Reverse)
+        {
+            [array]::Reverse($StringVersions)
+        }
+        return $StringVersions
+    }
+
+    [string[]]
+    GetAllUnrealEngineStringVersions()
+    {
+        return $this.GetAllUnrealEngineStringVersions($false, $false)
     }
 
     [string]
@@ -89,10 +172,13 @@ class Config
         if (-not (Test-Path -Path ([Config]::FilePath())))
         {
             Write-Message "Creating config file..."
-            try {
+            try
+            {
                 [string]$DefaultJson = ([Config]::new() | ConvertTo-Json -Depth 2)
                 New-Item -Path ([Config]::FilePath()) -ItemType "File" -Value $DefaultJson
-            } catch {
+            }
+            catch
+            {
                 Write-Message -Error "Failed to create the config file at [Config]::FilePath()."
                 return $null
             }
@@ -102,9 +188,10 @@ class Config
         $JsonContent = Get-Content -Path ([Config]::FilePath()) | ConvertFrom-Json
         $Config = [Config]::new()
         $JsonContent.Engines | ForEach-Object {
-            $Config.AddEngine([UnrealEngine]::new($_.Version, $_.Path))
+            $Config.AddUnrealEngine([UnrealEngine]::new($_.Version, $_.Path))
         }
         $Config.SourceDirectory = $JsonContent.SourceDirectory
+        $Config.Loaded = $true
         return $Config
     }
 
@@ -122,13 +209,8 @@ class Config
     List()
     {
         Write-Message "Engine Versions:"
-        foreach ($Engine in $this.Engines)
-        {
-            Write-Message "$( $Engine.Version ) $( $Engine.Path )"
-        }
+        $this.Engines | Format-Table
     }
-
-
 }
 
 function Set-ConfigSourceDirectory
@@ -213,7 +295,7 @@ function Get-InstalledEngineVersions
     $sortedEngines | Format-Table Version, Path, Clang
 }
 
-function Add-SourceEngineVerion
+function Add-CustomEngineVerion
 {
     [CmdletBinding()]
     param(
@@ -222,12 +304,20 @@ function Add-SourceEngineVerion
         [Parameter(Mandatory = $true)]
         [string]$Path
     )
-    if ('All' -eq $SpecifiedEngineVersions[0])
+    try
     {
-        Write-Message -Err "Error: No engine version specified"
-        Break Script
+        $EngineVersion = [Version]::new($Version)
+    }
+    catch
+    {
+        Write-Message -Fatal "Invalid Engine Version '$Version'"
+    }
+
+    if (-not (Test-Path -Path $Path))
+    {
+        Write-Message -Fatal "Invalid Engine Path '$Path'"
     }
     $Config = [Config]::Load()
-    $Config.AddEngine([UnrealEngine]::new($Version, $Path))
+    $Config.AddUnrealEngine([UnrealEngine]::new($Version, $Path))
     $Config.Save()
 }

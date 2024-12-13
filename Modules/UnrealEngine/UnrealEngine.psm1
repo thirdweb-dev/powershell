@@ -1,3 +1,5 @@
+using module .\Helpers.psm1
+
 enum Platforms
 {
     Win64
@@ -11,12 +13,21 @@ class UnrealEngine
     [Version] $Version
     [string] $Path
 
-    UnrealEngine([string]$version, [string]$path)
+    UnrealEngine([string]$InVersion, [string]$InPath)
     {
-        $this.Version = [Version]::new($version)
-        $this.Path = $path
+        try {
+            $this.Version = [Version]::new($InVersion)
+        } catch {
+            throw "UnrealEngine::Invalid Engine Version::$InVersion"
+        }
+        $this.Path = $InPath
     }
 
+    UnrealEngine([Version]$InVersion, [string]$path)
+    {
+        $this.Version = $InVersion
+        $this.Path = $path
+    }
 
     [UnrealEngine[]]
     static GetAvailableVersions()
@@ -27,6 +38,7 @@ class UnrealEngine
         $uniqueTags = $tags |
                 ForEach-Object { ($_ -split '\s+')[1] } |
                 Where-Object { -not $_.EndsWith('^{}') } |
+                Where-Object { $_.StartsWith('5.') } |
                 ForEach-Object { $_ -replace '^refs/tags/', '' } |
                 Where-Object { $_.ToLower().Contains('release') } |
                 ForEach-Object { $_ -replace '-release', '' } |
@@ -34,10 +46,65 @@ class UnrealEngine
 
         return $uniqueTags | ForEach-Object { [UnrealEngine]::new($_, "") }
     }
+
+    [UnrealEngine[]]
+    static GetSourceEngines([string]$Path)
+    {
+        if (-not (Test-Path $Path))
+        {
+            Write-Message -Warn "Source directory '$Path' does not exist."
+            return @()
+        }
+
+        $childFolders = Get-ChildItem -Path $Path -Directory
+
+        if (-not $childFolders)
+        {
+            Write-Message -Warn "No installed Unreal Engine versions found in '$Path'."
+            return @()
+        }
+
+        $installedEngines = foreach ($folder in $childFolders)
+        {
+            try
+            {
+                $folderVersion = [Version]::Parse($folder.Name)
+                [UnrealEngine]::new($folderVersion, $folder.FullName)
+            }
+            catch
+            {
+                Write-Message -Warn "Invalid engine version folder: '$( $folder.Name )'"
+            }
+        }
+
+        return $installedEngines | Sort-Object { $_.Version } -Descending
+    }
 }
 
 function Get-AvailableUnrealEngineVersions
 {
-
     [UnrealEngine]::GetAvailableVersions() | Format-Table
+}
+
+function Set-UnrealEngineRoot
+{
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $ue4Command = Get-Command "ue4" -ErrorAction SilentlyContinue
+    if ($null -eq $ue4Command)
+    {
+        Write-Message -Err "ue4cli not installed"
+        Write-Message -Err "Installation instructions at: https://docs.adamrehn.com/ue4cli/overview/introduction-to-ue4cli"
+        break Script
+    }
+
+    $CurrentPath = ue4 root 2> $null
+    if ($Path -ne $CurrentPath)
+    {
+        ue4 setroot $Path 2> $null
+        Write-Message "Set unreal engine root to $Path"
+    }
 }

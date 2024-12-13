@@ -1,5 +1,6 @@
 ﻿using module .\UnrealEngine.psm1
 using module .\Helpers.psm1
+using module .\Config.psm1
 using module .\Clang.psm1
 
 <#
@@ -57,10 +58,10 @@ function Build-Plugin
     Add-Type -AssemblyName 'PresentationFramework'
 
     $ErrorMessages = @{
-        InvalidPluginDir = "ERROR: {0} PluginDirectory override specified. No .uplugin file found."
-        NoUpluginFile = "ERROR: No .uplugin file found using default Script directory ({0}). Exiting..."
-        NoEngineVersionsSaved = "Error: No Engine versions saved in config"
-        AddEngineVersions = "Add Engine versions via the save command"
+        InvalidPluginDir = "{0} PluginDirectory override specified. No .uplugin file found."
+        NoUpluginFile = "No .uplugin file found using default Script directory ({0}). Exiting..."
+        NoEngineVersionsSaved = "No Engine versions saved in config"
+        AddEngineVersions = "Add Source Engine versions via the Set-ConfigSourceDirectory command, or a custom engine via Add-CustomEngineVersion command"
         SaveCommandExample = "Example: BuildPlugin.ps1 save -EngineVersion 5.5 -EnginePath 'C:\Program Files\Epic Games\UE_5.5'"
     }
 
@@ -115,43 +116,20 @@ function Build-Plugin
         Break Script
     }
 
-    function Set-UnrealEngineRoot
-    {
-        param ([string]$DesiredRoot)
-
-        if (-not $DesiredRoot)
-        {
-            Write-Message -Err "Error: No Unreal Engine root path set"
-            Break Script
-        }
-
-        $ue4Command = Get-Command "ue4" -ErrorAction SilentlyContinue
-        if ($null -eq $ue4Command)
-        {
-            Write-Message -Err "Error: ue4cli not installed"
-            Write-Message -Err "Installation instructions at: https://docs.adamrehn.com/ue4cli/overview/introduction-to-ue4cli"
-            Break Script
-        }
-
-        $currentRoot = ue4 root 2> $null
-        if ($DesiredRoot -ne $currentRoot)
-        {
-            ue4 setroot $DesiredRoot 2> $null
-        }
-    }
-
-    $Configuration = [Config]::Load()
+    $Config = [Config]::new($true)
 
     $PluginDirectory = Initialize-PluginDirectory
     $UPluginPath = Get-UPluginPath -Path $PluginDirectory
     $UPlugin = Get-Content -Path $UPluginPath | ConvertFrom-Json
 
     $Versions = $SpecifiedEngineVersions
+
     if ('All' -eq $SpecifiedEngineVersions)
     {
-        $Versions = $Configuration.GetAllVersions($ProcessInReverseOrder)
+        $Versions = $Config.GetAllUnrealEngineStringVersions($true, $ProcessInReverseOrder)
     }
-    if (0 -eq $Versions.count)
+
+    if (0 -eq $Versions.Count)
     {
         Write-Message -Err $ErrorMessages.NoEngineVersionsSaved
         Write-Message -Err $ErrorMessages.AddEngineVersions
@@ -163,16 +141,17 @@ function Build-Plugin
     {
         Write-Message "Building Plugin for UE_$Version"
 
-        if (-not $Configuration.HasVersion($Version))
+        if (-not $Config.HasUnrealEngineVersion($Version))
         {
-            Write-Message -Err "Error: No engine path saved for $Version"
+            Write-Message -Err "No engine path saved for $Version"
             continue
         }
 
-        Set-UnrealEngineRoot($Configuration.GetVersionPath($Version))
+        Set-UnrealEngineRoot -Path $Config.GetUnrealEnginePath($Version)
+
         if ( $TargetPlatforms.Contains([Platforms]::Linux))
         {
-            Install-Clang -EngineVersion $Version
+            Set-Clang -EngineVersion $Version
         }
 
         $UPluginFriendlyName = ($UPlugin.FriendlyName -Split " ") -Join ""
