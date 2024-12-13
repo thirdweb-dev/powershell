@@ -37,12 +37,15 @@ function Start-Executable
     $process.StartInfo = $processInfo
     $process.Start() | Out-Null
     $process.WaitForExit()
-    $stdout = $process.StandardOutput.ReadToEnd()
-    $stderr = $process.StandardError.ReadToEnd()
+
+    $StdOut = $process.StandardOutput.ReadToEnd()
+    $StdErr = $process.StandardError.ReadToEnd()
+    $ExitCode = $process.ExitCode
+
     return [PSCustomObject]@{
-        StdOut = $stdout
-        StdErr = $stderr
-        ExitCode = $exitCode
+        StdOut = $StdOut
+        StdErr = $StdErr
+        ExitCode = $ExitCode
     }
 }
 
