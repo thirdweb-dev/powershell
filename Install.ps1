@@ -84,7 +84,7 @@ If (Test-Path -Path $ThirdwebModuleDirectoryPath)
 
     elseif ($GitStatus.StdOut -match "Your branch is behind")
     {
-        Write-Host "Updating Thirdweb PowerShell module..." -f ForegroundColor Blue
+        Write-Host "Updating Thirdweb PowerShell module..." -ForegroundColor Blue
         $GitPull = Start-Executable "git" `
             -Arguments "pull" `
             -WorkingDirectory $ThirdwebModuleDirectoryPath
