@@ -68,6 +68,10 @@ If (Test-Path -Path $ThirdwebModuleDirectoryPath)
         -Arguments "fetch" `
         -WorkingDirectory $ThirdwebModuleDirectoryPath
 
+    Write-Host "STDOUT: $( $GitFetch.StdOut )"
+    Write-Host "STDERR: $( $GitFetch.STdErr )"
+    Write-Host "EXITCODE: $( $GitFetch.STdErr )"
+
     if (0 -ne $GitFetch.ExitCode)
     {
         Write-Host "STDOUT: $( $GitFetch.StdOut )"
