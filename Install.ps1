@@ -68,14 +68,8 @@ If (Test-Path -Path $ThirdwebModuleDirectoryPath)
         -Arguments "fetch" `
         -WorkingDirectory $ThirdwebModuleDirectoryPath
 
-    Write-Host "STDOUT: $( $GitFetch.StdOut )"
-    Write-Host "STDERR: $( $GitFetch.STdErr )"
-    Write-Host "EXITCODE: $( $GitFetch.STdErr )"
-
     if (0 -ne $GitFetch.ExitCode)
     {
-        Write-Host "STDOUT: $( $GitFetch.StdOut )"
-        Write-Host "STDERR: $( $GitFetch.STdErr )"
         throw "Failed to fetch status from github."
     }
 
@@ -119,8 +113,6 @@ else
 
     if (0 -ne $GitClone.ExitCode)
     {
-        Write-Host "STDOUT: $( $GitClone.StdOut )"
-        Write-Host "STDERR: $( $GitClone.STdErr )"
         throw "Failed to clone module from github"
     }
     Write-Host "Thirdweb PowerShell module installed successfully!" -ForegroundColor Green
