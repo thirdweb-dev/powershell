@@ -1,7 +1,7 @@
 $PSHomePath = Join-Path -Path $HOME -ChildPath "Documents\PowerShell"
 $PSModulesPath = Join-Path -Path $PSHomePath -ChildPath "Modules"
-$ThirdwebModuleDirectoryPath = JoinPath -Path $PSModulesPath -ChildPath "Thirdweb"
-$ThirdwebModulePath = JoinPath -Path $ThirdwebModuleDirectoryPath -ChildPath "Thirdweb.psm1"
+$ThirdwebModuleDirectoryPath = Join-Path -Path $PSModulesPath -ChildPath "Thirdweb"
+$ThirdwebModulePath = Join-Path -Path $ThirdwebModuleDirectoryPath -ChildPath "Thirdweb.psm1"
 $PSProfilePath = Join-Path -Path $PSHomePath -ChildPath "Microsoft.PowerShell_profile.ps1"
 
 $ThirdwebModuleGitRepo = "git@github.com:thirdweb-dev/powershell.git"
