@@ -30,5 +30,5 @@ Internal Commands used within other commands
 
 ## Installing / Updating
 ```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; $InstallWebClient = New-Object System.Net.WebClient; $InstallWebClient.CachePolicy = [System.Net.Cache.HttpRequestCacheLevel]::BypassCache; iex ($InstallWebClient.DownloadString('https://raw.githubusercontent.com/thirdweb-dev/powershell/refs/heads/main/Install.ps1'))
+Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; $InstallWebClient = New-Object System.Net.WebClient; $InstallWebClient.CachePolicy = New-Object System.Net.Cache.RequestCachePolicy([System.Net.Cache.HttpRequestCacheLevel]::BypassCache); iex ($InstallWebClient.DownloadString('https://raw.githubusercontent.com/thirdweb-dev/powershell/refs/heads/main/Install.ps1'))
 ```
