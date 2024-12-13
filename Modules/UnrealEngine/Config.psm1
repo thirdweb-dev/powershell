@@ -213,7 +213,7 @@ function Get-InstalledEngineVersions
     $sortedEngines | Format-Table Version, Path, Clang
 }
 
-function Add-SourceEngineVerion
+function Add-SourceEngineVersion
 {
     [CmdletBinding()]
     param(

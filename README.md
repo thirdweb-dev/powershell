@@ -19,8 +19,8 @@ Commands related to configuration of the module across all submodules
 #### Commandlets
 * **Set-ConfigSourceDirectory** - Set the directory used to install Unreal Engine source versions
 * **Get-ConfigSourceDirectory** - Get the current directory stored
-* **Get-InstalledEngineVersion** - List the installed source versions of Unreal Engine
-* **Add-SourceEngineVerion** - Manually add a source engine version located outside of the default source directory
+* **Get-InstalledEngineVersions** - List the installed source versions of Unreal Engine
+* **Add-SourceEngineVersion** - Manually add a source engine version located outside of the default source directory
 
 ### Helpers
 Internal Commands used within other commands
