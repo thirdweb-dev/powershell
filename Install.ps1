@@ -110,6 +110,8 @@ else
 
     if (0 -ne $GitClone.ExitCode)
     {
+        Write-Host "STDOUT: $( $GitClone.StdOut )"
+        Write-Host "STDERR: $( $GitClone.STdErr )"
         throw "Failed to clone module from github"
     }
     Write-Host "Thirdweb PowerShell module installed successfully!" -ForegroundColor Green
