@@ -15,18 +15,15 @@ class UnrealEngine
 
     UnrealEngine([string]$InVersion, [string]$InPath)
     {
-        try {
+        try
+        {
             $this.Version = [Version]::new($InVersion)
-        } catch {
+        }
+        catch
+        {
             throw "UnrealEngine::Invalid Engine Version::$InVersion"
         }
         $this.Path = $InPath
-    }
-
-    UnrealEngine([Version]$InVersion, [string]$path)
-    {
-        $this.Version = $InVersion
-        $this.Path = $path
     }
 
     [UnrealEngine[]]
@@ -78,6 +75,21 @@ class UnrealEngine
         }
 
         return $installedEngines | Sort-Object { $_.Version } -Descending
+    }
+
+    [string]
+    GetVersionString([bool]$StripPatch)
+    {
+        if ($StripPatch) {
+            return "{0}.{1}" -f $this.Version.Major, $this.Version.Minor
+        }
+        return $this.Version.ToString()
+    }
+
+    [string]
+    GetVersionString()
+    {
+        return $this.GetVersionString($false)
     }
 }
 

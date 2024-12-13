@@ -14,22 +14,6 @@ class Config
         $this.Loaded = $false
     }
 
-    Config([bool]$Load)
-    {
-        if ($Load)
-        {
-            $Config = [Config]::Load()
-            $this.Engines = $Config.Engines
-            $this.SourceDirectory = $Config.SourceDirectory
-            $this.Loaded = $true
-        }
-        else
-        {
-            $this.Engines = @()
-            $this.Loaded = $false
-        }
-    }
-
     [void]
     AddUnrealEngine([UnrealEngine]$Engine)
     {
@@ -195,6 +179,16 @@ class Config
         return $Config
     }
 
+    [UnrealEngine[]]
+    GetUnrealEngines([string[]]$Versions)
+    {
+        $matchingEngines = $this.GetAllUnrealEngines() | Where-Object {
+            $Versions -contains ("{0}.{1}" -f $_.Version.Major, $_.Version.Minor)
+        }
+
+        return $matchingEngines
+    }
+
     SetSourceDirectory([string]$Path)
     {
         $this.SourceDirectory = $Path
@@ -317,6 +311,7 @@ function Add-CustomEngineVersion
     {
         Write-Message -Fatal "Invalid Engine Path '$Path'"
     }
+
     $Config = [Config]::Load()
     $Config.AddUnrealEngine([UnrealEngine]::new($Version, $Path))
     $Config.Save()

@@ -116,7 +116,7 @@ function Build-Plugin
         Break Script
     }
 
-    $Config = [Config]::new($true)
+    $Config = [Config]::Load()
 
     $PluginDirectory = Initialize-PluginDirectory
     $UPluginPath = Get-UPluginPath -Path $PluginDirectory
@@ -129,7 +129,9 @@ function Build-Plugin
         $Versions = $Config.GetAllUnrealEngineStringVersions($true, $ProcessInReverseOrder)
     }
 
-    if (0 -eq $Versions.Count)
+    $Engines = $Config.GetUnrealEngines($Versions)
+
+    if (0 -eq $Engines.Count)
     {
         Write-Message -Err $ErrorMessages.NoEngineVersionsSaved
         Write-Message -Err $ErrorMessages.AddEngineVersions
@@ -137,9 +139,16 @@ function Build-Plugin
         Break Script
     }
 
-    foreach ($Version in $Versions)
+    $AllEngineVersionStrings = $(foreach ($Engine in $Engines)
     {
-        Write-Message "Building Plugin for UE_$Version"
+        $Engine.Version.ToString()
+    }) -join ", "
+    Write-Message "Resolved $( $Engines.Count ) engine versions to build for: $AllEngineVersionStrings"
+
+    foreach ($Engine in $Engines)
+    {
+        $Version = $Engine.GetVersionString($true)
+        Write-Message "Building plugin for $Version ($( [Array]::IndexOf($Engines, $Engine) + 1 )/$( $Engines.Count ))"
 
         if (-not $Config.HasUnrealEngineVersion($Version))
         {
