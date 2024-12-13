@@ -1,7 +1,7 @@
 $PSHomePath = Join-Path -Path $HOME -ChildPath "Documents\PowerShell"
 $PSModulesPath = Join-Path -Path $PSHomePath -ChildPath "Modules"
 $ThirdwebModuleDirectoryPath = Join-Path -Path $PSModulesPath -ChildPath "Thirdweb"
-$ThirdwebModulePath = Join-Path -Path $ThirdwebModuleDirectoryPath -ChildPath "Thirdweb.psm1"
+$ThirdwebModulePath = Join-Path -Path $ThirdwebModuleDirectoryPath -ChildPath "Modules\Thirdweb.psm1"
 $PSProfilePath = Join-Path -Path $PSHomePath -ChildPath "Microsoft.PowerShell_profile.ps1"
 
 $ThirdwebModuleGitRepo = "git@github.com:thirdweb-dev/powershell.git"
@@ -131,5 +131,5 @@ if ($PSProfileContent -notcontains $ThirdwebModuleImportLines)
 {
     Add-Content -Path $PSProfilePath -Value $ThirdwebModuleImportLines
     Write-Host "Added Thirdweb Module to Profile via Import" -ForegroundColor Blue
-    Write-Host "To use, either close and reopen the terminal, or type `. $Profile" -ForegroundColor Blue
+    Write-Host "To use, either close and reopen the terminal, or type . `$Profile" -ForegroundColor Blue
 }
