@@ -295,7 +295,7 @@ function Get-InstalledEngineVersions
     $sortedEngines | Format-Table Version, Path, Clang
 }
 
-function Add-CustomEngineVerion
+function Add-CustomEngineVersion
 {
     [CmdletBinding()]
     param(
