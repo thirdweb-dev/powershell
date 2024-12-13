@@ -6,81 +6,109 @@ $PSProfilePath = Join-Path -Path $PSHomePath -ChildPath "Microsoft.PowerShell_pr
 
 $ThirdwebModuleGitRepo = "git@github.com:thirdweb-dev/powershell.git"
 
+function Start-Executable
+{
+    param(
+        [string]$FileName,
+        [string]$Arguments,
+        [string]$WorkingDirectory
+    )
+    $processInfo = New-Object System.Diagnostics.ProcessStartInfo
+    if (Test-Path $FileName)
+    {
+        $processInfo.FileName = (Resolve-Path $FileName).Path
+    }
+    else
+    {
+        $Location = where.exe git
+        $processInfo.FileName = $Location
+    }
+
+    $processInfo.RedirectStandardError = $true
+    $processInfo.RedirectStandardOutput = $true
+    $processInfo.UseShellExecute = $false
+    $processInfo.Arguments = $Arguments
+    if ($WorkingDirectory)
+    {
+        $processInfo.WorkingDirectory = $WorkingDirectory
+    }
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $processInfo
+    $process.Start() | Out-Null
+    $process.WaitForExit()
+    $stdout = $process.StandardOutput.ReadToEnd()
+    $stderr = $process.StandardError.ReadToEnd()
+    return [PSCustomObject]@{
+        StdOut = $stdout
+        StdErr = $stderr
+        ExitCode = $exitCode
+    }
+}
+
 if (-not (Test-Path -Path $PSModulesPath))
 {
     Write-Host "Creating PowerShell modules directory..." -ForegroundColor Blue
-    New-Item -Path $PSModulesPath -ItemType Directory -Force
+    New-Item -Path $PSModulesPath -ItemType Directory -Force | Out-Null
 }
 
 if (-not (Test-Path -Path $ThirdwebModulePath))
 {
     Write-Host "Creating PowerShell profile..." -ForegroundColor Blue
-    New-Item -Path $PSProfilePath -ItemType File -Force
+    New-Item -Path $PSProfilePath -ItemType File -Force | Out-Null
 }
 
 If (Test-Path -Path $ThirdwebModuleDirectoryPath)
 {
     Write-Host "Checking for updates..." -ForegroundColor Blue
-    $GitFetchProcess = Start-Process "git" `
-        -ArgumentList "fetch" `
-        -WorkingDirectory $ThirdwebModuleDirectoryPath `
-        -NoNewWindow `
-        -RedirectStandardOutput `
-        -Wait `
-        -PassThru
+    $GitFetch = Start-Executable "git" `
+        -Arguments "fetch" `
+        -WorkingDirectory $ThirdwebModuleDirectoryPath
 
-    if (0 -ne $GitFetchProcess.ExitCode)
+    if (0 -ne $GitFetch.ExitCode)
     {
         throw "Failed to fetch status from github."
     }
-    
-    $GitStatusProcess = Start-Process "git" `
-        -ArgumentList "status" `
-        -WorkingDirectory $ThirdwebModuleDirectoryPath `
-        -NoNewWindow `
-        -RedirectStandardOutput `
-        -Wait `
-        -PassThru
-    $GitStatusResult = $GitStatusProcess.StandardOutput.ReadToEnd()
 
-    if (0 -ne $GitStatusProcess.ExitCode)
+    $GitStatus = Start-Executable "git" `
+        -Arguments "status" `
+        -WorkingDirectory $ThirdwebModuleDirectoryPath
+
+    if (0 -ne $GitStatus.ExitCode)
     {
         throw "Failed to read current module status"
     }
-    elseif ($GitStatusResult -match "Your branch is behind")
+
+    elseif ($GitStatus.StdOut -match "Your branch is behind")
     {
         Write-Host "Updating Thirdweb PowerShell module..." -f ForegroundColor Blue
-        $GitPullProcess = Start-Process "git" `
-            -ArgumentList "pull" `
-            -WorkingDirectory $ThirdwebModuleDirectoryPath `
-            -NoNewWindow `
-            -RedirectStandardOutput `
-            -Wait `
-            -PassThru
+        $GitPull = Start-Executable "git" `
+            -Arguments "pull" `
+            -WorkingDirectory $ThirdwebModuleDirectoryPath
 
-        if (0 -ne $GitPullProcess.ExitCode)
+        if (0 -ne $GitPull.ExitCode)
         {
             throw "Failed to update Thirdweb PowerShell module"
         }
         Write-Host "Thirdweb PowerShell module updated!" -ForegroundColor Green
-    } elseif ($GitStatusResult -match "up to date") {
+    }
+    elseif ($GitStatus.StdOut -match "up to date")
+    {
         Write-Host "Thirdweb PowerShell module is already up to date" -ForegroundColor Blue
-    } else {
+    }
+    else
+    {
         throw "Could not determine the current status of the module"
     }
 }
 else
 {
-    Write-Host "Installing Thirdweb PowerShell module..." -ForegroundColor Blue 
-    $GitCloneProcess = Start-Process git `
-        -ArgumentList "clone $ThirdwebModuleGitRepo Thirdweb" `
-        -WorkingDirectory "$PSModulesPath" `
-        -Wait `
-        -NoNewWindow `
-        -PassThru `
-        -RedirectStandardOutput `
+    Write-Host "Installing Thirdweb PowerShell module..." -ForegroundColor Blue
+    $GitClone = Start-Executable "git" `
+        -Arguments "clone $ThirdwebModuleGitRepo Thirdweb" `
+        -WorkingDirectory "$PSModulesPath"
 
-    if (0 -ne $GitCloneProcess.ExitCode)
+    if (0 -ne $GitClone.ExitCode)
     {
         throw "Failed to clone module from github"
     }
@@ -96,7 +124,8 @@ Import-Module '$ThirdwebModulePath'
 
 $PSProfileContent = Get-Content -Path $PSProfilePath -ErrorAction SilentlyContinue
 
-if ($PSProfileContent -notcontains $ThirdwebModuleImportLines) {
+if ($PSProfileContent -notcontains $ThirdwebModuleImportLines)
+{
     Add-Content -Path $PSProfilePath -Value $ThirdwebModuleImportLines
     Write-Host "Added Thirdweb Module to Profile via Import" -ForegroundColor Blue
     Write-Host "To use, either close and reopen the terminal, or type `. $Profile" -ForegroundColor Blue

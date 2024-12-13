@@ -38,3 +38,43 @@ function Write-Message
         break Script
     }
 }
+
+function Start-Executable
+{
+    param(
+        [string]$FileName,
+        [string]$Arguments,
+        [string]$WorkingDirectory
+    )
+    $processInfo = New-Object System.Diagnostics.ProcessStartInfo
+    if (Test-Path $FileName)
+    {
+        $processInfo.FileName = (Resolve-Path $FileName).Path
+    }
+    else
+    {
+        $Location = where.exe git
+        $processInfo.FileName = $Location
+    }
+
+    $processInfo.RedirectStandardError = $true
+    $processInfo.RedirectStandardOutput = $true
+    $processInfo.UseShellExecute = $false
+    $processInfo.Arguments = $Arguments
+    if ($WorkingDirectory)
+    {
+        $processInfo.WorkingDirectory = $WorkingDirectory
+    }
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $processInfo
+    $process.Start() | Out-Null
+    $process.WaitForExit()
+    $stdout = $process.StandardOutput.ReadToEnd()
+    $stderr = $process.StandardError.ReadToEnd()
+    return [PSCustomObject]@{
+        StdOut = $stdout
+        StdErr = $stderr
+        ExitCode = $exitCode
+    }
+}
