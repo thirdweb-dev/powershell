@@ -67,6 +67,8 @@ If (Test-Path -Path $ThirdwebModuleDirectoryPath)
 
     if (0 -ne $GitFetch.ExitCode)
     {
+        Write-Host "STDOUT: $( $GitClone.StdOut )"
+        Write-Host "STDERR: $( $GitClone.STdErr )"
         throw "Failed to fetch status from github."
     }
 
