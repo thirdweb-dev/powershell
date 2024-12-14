@@ -170,6 +170,8 @@ function Set-Clang
 
     if (-not $Clang.IsInstalled())
     {
+        Add-Type -AssemblyName 'PresentationFramework'
+
         $caption = "Missing Clang Toolchain"
         $message = "You do not have the Clang Cross-Compile Toolchain installed for UE v{0}. (Clang {1}). Install?" -f $EngineVersion,$Clang.GetFolderName()
         $response = [System.Windows.MessageBox]::Show($message, $caption, 'YesNo')
