@@ -133,8 +133,10 @@ function Update-ThirdwebModule
     $PSProfileContent = Get-Content -Path $PSProfilePath -Raw
 
     $ThirdwebModuleImportLines = @"
+
 # Thirdweb Module
 Import-Module '$ThirdwebModulePath'
+
 "@
 
     if ($PSProfileContent -notlike "*# Thirdweb Module*")
