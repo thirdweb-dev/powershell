@@ -70,20 +70,22 @@ function Start-Executable
     $process.StartInfo = $processInfo
     $process.Start() | Out-Null
     $process.WaitForExit()
-    $stdout = $process.StandardOutput.ReadToEnd()
-    $stderr = $process.StandardError.ReadToEnd()
+
+    $StdOut = $process.StandardOutput.ReadToEnd()
+    $StdErr = $process.StandardError.ReadToEnd()
+    $ExitCode = $process.ExitCode
+
     return [PSCustomObject]@{
-        StdOut = $stdout
-        StdErr = $stderr
-        ExitCode = $exitCode
+        StdOut = $StdOut
+        StdErr = $StdErr
+        ExitCode = $ExitCode
     }
 }
 
+
 function Update-ThirdwebModule
 {
-    $PSHomePath = Join-Path -Path $HOME -ChildPath "Documents\PowerShell"
-    $PSModulesPath = Join-Path -Path $PSHomePath -ChildPath "Modules"
-    $ThirdwebModuleDirectoryPath = Join-Path -Path $PSModulesPath -ChildPath "Thirdweb"
+    $ThirdwebModuleDirectoryPath = Write-Host (Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent)
 
     Write-Message "Checking for updates..."
     $GitFetch = Start-Executable "git" `
@@ -126,12 +128,16 @@ function Update-ThirdwebModule
         throw "Could not determine the current status of the module"
     }
 
+
+
+    $PSProfilePath = Join-Path -Path $HOME -ChildPath "Documents\PowerShell\Microsoft.PowerShell_profile.ps1"
+
+    $PSProfileContent = Get-Content -Path $PSProfilePath -Raw
+
     $ThirdwebModuleImportLines = @"
 # Thirdweb Module
 Import-Module '$ThirdwebModulePath'
 "@
-
-    $PSProfileContent = Get-Content -Path $PSProfilePath -Raw
 
     if ($PSProfileContent -notlike "*# Thirdweb Module*")
     {
