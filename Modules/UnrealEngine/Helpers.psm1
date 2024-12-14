@@ -85,7 +85,7 @@ function Start-Executable
 
 function Update-ThirdwebModule
 {
-    $ThirdwebModuleDirectoryPath = Write-Host (Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent)
+    $ThirdwebModuleDirectoryPath = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
 
     Write-Message "Checking for updates..."
     $GitFetch = Start-Executable "git" `
@@ -127,8 +127,6 @@ function Update-ThirdwebModule
     {
         throw "Could not determine the current status of the module"
     }
-
-
 
     $PSProfilePath = Join-Path -Path $HOME -ChildPath "Documents\PowerShell\Microsoft.PowerShell_profile.ps1"
 
